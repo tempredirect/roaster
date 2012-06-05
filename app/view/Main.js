@@ -51,7 +51,7 @@ Ext.define("CookingTimes.view.Main", {
                 }                
             },{
                 html:'Pork',
-                cooking:[20,45]                       
+                cooking:[25,75]                       
             }],
             listeners:{
                 'activeitemchange':function(self, newPanel) {
@@ -170,7 +170,6 @@ Ext.define("CookingTimes.view.Main", {
         this.updateWeight(this.getWeightSelector().getValue()[0] + 500);
     },
     selectedJointChanged:function(){
-        console.info("selectedJointChanged");
         var cookingtimes = this.getCurrentCookingTimes();
         if( Ext.isArray(cookingtimes) ){
             this.getFinishSelector().hide(true);
@@ -188,6 +187,6 @@ Ext.define("CookingTimes.view.Main", {
     },
     getCurrentCookingTimes:function(){
         var selected = this.down("#joint-selector").getActiveItem();
-        return selected.cooking;
+        return selected.config.cooking;   
     }
 });
