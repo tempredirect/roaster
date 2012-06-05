@@ -5,13 +5,14 @@ Ext.define("CookingTimes.view.Main", {
         'Ext.TitleBar',
         'Ext.Label',
         'Ext.slider.Slider',
-        'Ext.carousel.Carousel'
+        'Ext.carousel.Carousel',
+        'Ext.SegmentedButton'
     ],
     config: {
         iconCls: 'home',
         layout:'vbox',
         styleHtmlContent: true,
-        scrollable: true,
+        scrollable: false,
 
         items: [{
           docked: 'top',
@@ -19,6 +20,7 @@ Ext.define("CookingTimes.view.Main", {
           title: 'Roaster'
         },{
             xtype:'carousel',
+            itemId:'joint-selector',
             defaults:{
                 xtype:'label',
                 style: {
@@ -30,19 +32,37 @@ Ext.define("CookingTimes.view.Main", {
             height:'100px',
             width:'100%',
             items:[{
-                html:'Roast Chicken'
+                html:'Chicken',
+                cooking:[20,45]
             },{
-                html:'Roast Lamb'
+                html:'Lamb',
+                cooking:{
+                    'rare':[20,45],
+                    'medium':[25,60],
+                    'welldone':[30,75]
+                }
             },{
-                html:'Roast Beef'
+                html:'Beef',
+                joint:'beef',
+                cooking:{
+                    'rare':[20,45],
+                    'medium':[25,60],
+                    'welldone':[30,75]
+                }                
             },{
-                html:'Roast Pork'
-            }]
+                html:'Pork',
+                cooking:[20,45]                       
+            }],
+            listeners:{
+                'activeitemchange':function(self, newPanel) {
+                    Ext.getCmp('cookingtimes-main').selectedJointChanged();
+                }
+            }
         },{
             xtype:'label',
+            itemId: 'instructions-label',
             width:'80%',
             margin:'auto auto',
-            html:'45 minutes per kilo plus 20 minutes at 190&deg;C',
             style: {
                 'text-align':'center'
             }          
@@ -69,14 +89,16 @@ Ext.define("CookingTimes.view.Main", {
             ]                
         },{
             // slider group
-            xtype:'panel',
+            xtype:'panel',            
             items:[{ 
                 xtype:'slider',
+                itemId:'weight-selector',
                 minValue:0,
                 maxValue:2500,
                 increment:50,
+                value:700, // 1.2kg
                 listeners:{
-                    drag:function(self, slider, newValue){
+                    drag:function(self, slider, newValue){                        
                         Ext.getCmp('cookingtimes-main').updateWeight(newValue[0] + 500);
                     },
                     change:function(self, slider,thumb, newValue){
@@ -84,24 +106,88 @@ Ext.define("CookingTimes.view.Main", {
                     }
                 }
             }]
-        }]
+        },{
+            xtype:'segmentedbutton',
+            itemId:'finish-selector',
+            defaults:{width:"33.3%",},
+            width:'90%',
+            minWidth:'300px',
+            margin:'auto auto',
+            items:[
+                {text:'Rare', key:'rare'},
+                {text:'Medium', key:'medium', pressed:true},
+                {text:'Well done', key:'welldone'}
+            ],
+            listeners:{
+                'toggle':function(){Ext.getCmp('cookingtimes-main').refresh();}
+            }            
+        }],
+        listeners:{
+            'activate':function(self){self.selectedJointChanged();}
+        }
     },
+    instructions:new Ext.Template('{timePerKilo} per kilo plus {initial} minutes at {temperature}&deg;C'),
     updateWeight:function(weight){
         var label = this.down('#weight-label');
         var weightInKilos = weight / 1000;
+        var cookingTime = this.getSelectedCookingTime();
         label.setHtml( ( weightInKilos ).toFixed(2) );
-        var minutes = 20 + ( weightInKilos * 45 ) + 5 ; // 20 + 45 per kilo                
+        var minutes = cookingTime[0] + ( weightInKilos * cookingTime[1] ) + 5 ; // 20 + 45 per kilo etc
         
-        var hour = Math.floor(minutes / 60);
-        var minute = minutes % 60;
+        var parts = this.toHoursAndMinutes(minutes);
+        var hour = parts[0];
+        var minute = parts[1];
 
         minute = Math.floor(minute / 5) * 5;
         
         minute = "" + minute ;
         if( minute.length == 1){ 
             minute = '0' + minute ;
-        }
-        
+        }        
         this.down('#time').setHtml(hour + ":" + minute);
+    },
+    getFinishSelector:function(){return this.down('#finish-selector');},
+    getWeightSelector:function(){return this.down('#weight-selector');},
+    toHoursAndMinutes:function(minutes){
+        return [Math.floor(minutes / 60), minutes % 60 ];
+    },
+    refresh:function(){
+        var cookingTime = this.getSelectedCookingTime();
+        var minutesPerKilo = cookingTime[1];
+        var parts = this.toHoursAndMinutes(minutesPerKilo);
+        var formatted = '';
+        if( parts[0] > 0 ){ 
+            formatted += parts[0] + ' ' + (parts[0] == 1 ? 'hour' : 'hours') + ' ';
+        }
+        if( parts[1] > 0 ){
+            formatted += parts[1] + ' minutes';
+        }
+        this.down('#instructions-label').setHtml(this.instructions.apply({
+            initial:cookingTime[0],
+            timePerKilo:formatted,
+            temperature:"190"
+        }));
+        this.updateWeight(this.getWeightSelector().getValue()[0] + 500);
+    },
+    selectedJointChanged:function(){
+        console.info("selectedJointChanged");
+        var cookingtimes = this.getCurrentCookingTimes();
+        if( Ext.isArray(cookingtimes) ){
+            this.getFinishSelector().hide(true);
+        } else {
+            this.getFinishSelector().show(true);
+        }
+        this.refresh();
+    },
+    getSelectedCookingTime:function(){
+        var times = this.getCurrentCookingTimes();
+        if( Ext.isArray(times) ){
+            return times;
+        }
+        return times[this.getFinishSelector().getPressedButtons()[0].key];
+    },
+    getCurrentCookingTimes:function(){
+        var selected = this.down("#joint-selector").getActiveItem();
+        return selected.cooking;
     }
 });
