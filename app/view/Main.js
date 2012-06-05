@@ -187,6 +187,6 @@ Ext.define("CookingTimes.view.Main", {
     },
     getCurrentCookingTimes:function(){
         var selected = this.down("#joint-selector").getActiveItem();
-        return selected.config.cooking;   
+        return selected.cooking || selected.config.cooking;   
     }
 });
