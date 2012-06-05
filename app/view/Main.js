@@ -183,7 +183,9 @@ Ext.define("CookingTimes.view.Main", {
         if( Ext.isArray(times) ){
             return times;
         }
-        return times[this.getFinishSelector().getPressedButtons()[0].key];
+        var selected = this.getFinishSelector().getPressedButtons()[0];
+        
+        return times[ selected.key || selected.config.key ];
     },
     getCurrentCookingTimes:function(){
         var selected = this.down("#joint-selector").getActiveItem();
